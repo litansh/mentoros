@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./resources:/app/resources
+    environment:
+      - LOG_LEVEL=debug
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Mock DB for MVP development
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: mentoros
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mentoros_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
