@@ -1,409 +1,343 @@
-# MentorOS – Architect README (Closed Spec)
-Goal-first Personal Learning + Coaching Agent.
-Builds a custom syllabus/roadmap per user goal and constraints, verifies resources, coaches execution, runs assessments, adapts over time, and exports artifacts (Notion/PDF). Supports configurable channels (Web + optional WhatsApp/Telegram/Email) and certification preferences (skill-first ↔ certification-first). Includes an admin control plane with RBAC, policies, and cost governance.
+# MentorOS
+
+**AI-powered goal-to-mastery learning platform with personalized coaching, structured programs, and accountability.**
+
+Build custom learning paths from goals to mastery with multi-agent orchestration, resource verification, and adaptive coaching that keeps learners on track.
 
 ---
 
-## 0) Executive Summary
-MentorOS is not a course marketplace and not a generic chatbot.
-MentorOS is a **goal-to-mastery system** with:
-- structured onboarding
-- plan generation with approval gate
-- execution coaching + accountability
-- assessments + adaptation
-- verified resources only
-- exports and reporting
-- admin governance (users, roles, policies, costs)
+## 🎯 Why It Exists
 
-This spec supports:
-- Minimal/no-AWS deployment for MVP
-- Full AWS scale deployment for growth
-- Multi-channel IO where WhatsApp is optional (a channel), not the product
+**Problem:** Generic online courses and chatbots don't provide structured paths from "I want to learn X" to "I've mastered X." Learners struggle with:
+- Vague goals without concrete plans
+- Unverified or unreliable learning resources
+- No accountability or adaptation when stuck
+- Information overload without curation
 
----
-
-## 1) Core Concepts (Domain Model)
-### Entities
-- **User**: a learner with preferences and channel bindings
-- **Goal**: what the user wants to achieve, with constraints
-- **Program**: an approved plan (syllabus + schedule + modules)
-- **Module**: weekly unit with tasks and assessments
-- **Task**: reading/video/drill/reflection/quiz
-- **Assessment**: quiz + scenario grading
-- **Artifact**: exports (Notion/PDF/certificate)
-- **Policy**: budget/token/cert/channel/provider rules enforced system-wide or per org/user
-- **Resource Registry**: curated canonical sources with verification status
-
-### Invariants (Hard Rules)
-1) No Program becomes ACTIVE without explicit user approval.
-2) No external link is sent unless verified or sourced from a trusted registry and verified within TTL.
-3) Paid resources/certifications require explicit opt-in (unless admin policy allows auto-suggest).
-4) Budget and token caps are enforced per user/program/time-window.
-5) Admin actions are RBAC-protected and audited.
+**Solution:** MentorOS turns goals into structured, approved programs with:
+- Multi-agent system (Architect, Mentor, Coach, Verifier)
+- Curated resource registry with link verification
+- Human-in-the-loop approval gates
+- Adaptive coaching with stall detection
+- Cost governance and budget controls
 
 ---
 
-## 2) Interfaces (Channels) – Configurable
-### Primary: Web UI (Home)
-- onboarding wizard
-- plan preview/revision/approval
-- tasks dashboard + completion
-- ask mentor (Q&A)
-- assessments UI
-- progress + readiness
-- exports center
-- settings: channels, reminders, certification mode, learning style
+## 🚀 What It Does
 
-### Secondary: Messaging (Accountability)
-Messaging is for reminders + short check-ins; deep learning remains in Web.
+### Core Capabilities
 
-Supported adapters (pluggable):
-- Telegram (free, easiest)
-- WhatsApp via Twilio OR Meta Cloud API (optional)
-- Email (fallback)
-Future: Slack/Discord
+- **Goal Onboarding:** Structured discovery to understand learner's goal, constraints, time availability, budget, and certification preferences
+- **Custom Program Generation:** AI Learning Architect creates personalized syllabus with modules, tasks, pacing, and workload estimates
+- **Approval-Gated Plans:** No program becomes active without explicit learner approval
+- **Resource Verification:** All external links verified before sending (14-day cache TTL)
+- **Execution Coaching:** Weekly check-ins, nudges, stall detection, and recovery tactics
+- **Assessments & Adaptation:** Quizzes, scenario grading, and program adaptation based on results
+- **Multi-Channel Delivery:** Web UI (primary) + Telegram/WhatsApp/Email (accountability)
+- **Exports:** Notion sync, PDF reports, and completion certificates
+- **Admin Control Plane:** RBAC, cost governance, policy enforcement, audit logs
 
----
+### Multi-Agent Architecture
 
-## 3) Certification Preferences – Configurable
-Certification behavior is a **program-level setting** (not a catalog UI).
-
-Modes:
-- **Skill-first (default):** best learning path under constraints, favors free/low-cost resources.
-- **Cert-assisted:** suggests relevant certifications if cost/time fit; user chooses.
-- **Cert-first (premium):** user prioritizes prestigious certs; roadmap includes objectives, practice exams, milestones.
-
-Rules:
-- Paid cert/course suggestions require explicit user approval.
-- Admin can enforce:
-  - allowed certification providers
-  - max paid spend per month/program
-  - blocklists (e.g., “no vendor X”)
+1. **Learning Architect** - Goal → structured syllabus with dependencies, pacing, workload estimates
+2. **Subject Mentor** - Answers questions, creates examples, provides context-aware teaching
+3. **Coach** - Weekly check-ins, accountability nudges, stall detection, reflection prompts
+4. **Verifier/Guardrails** - Validates links, enforces budgets/policies, blocks hallucinations
 
 ---
 
-## 4) Admin Control Plane (Web UI) – RBAC + Governance
-Everything important is configurable in Admin UI.
+## 🏗️ Architecture
 
-### 4.1 Admin Features (MVP)
-Users:
-- list/search users
-- view user profile + active program + progress + last activity
-- pause/resume program
-- reset state
-- disable user
-- force plan regeneration (with reason logged)
+### High-Level Components
 
-Policies:
-- set global budget caps
-- set token caps and model routing rules
-- set certification policy defaults (skill-first/cert-assisted/cert-first availability)
-- provider allowlist/blocklist
-- channel enablement per tenant/user
+```
+┌────────────────────────────────────────────────────┐
+│  Channels (Multi-Channel Interface)                │
+│  ├─ Web UI (Next.js) - Primary                    │
+│  ├─ Telegram Bot - Reminders/Check-ins            │
+│  ├─ WhatsApp (Twilio/Meta) - Optional             │
+│  └─ Email - Fallback                              │
+└────────────────────────────────────────────────────┘
+                        ↓
+┌────────────────────────────────────────────────────┐
+│  Core API (FastAPI)                                │
+│  ├─ State Machine (9 states: Discovery → Active)  │
+│  ├─ Multi-Agent Orchestrator                      │
+│  ├─ Curriculum Engine                             │
+│  ├─ Assessment Engine                             │
+│  ├─ Verification Engine                           │
+│  ├─ Admin APIs (RBAC + Audit)                     │
+│  └─ Export Generators (Notion/PDF)                │
+└────────────────────────────────────────────────────┘
+                        ↓
+┌────────────────────────────────────────────────────┐
+│  Data Layer                                        │
+│  ├─ PostgreSQL - Users, Programs, Tasks, Policies │
+│  ├─ Redis - Job queue, rate limiting (optional)   │
+│  ├─ Object Storage - PDFs, certificates           │
+│  └─ Resource Registry (YAML) - Curated sources    │
+└────────────────────────────────────────────────────┘
+```
 
-Channels:
-- connect provider credentials (Twilio/Meta/Telegram/Email)
-- template management (message formats)
-- channel health checks
+### State Machine (Program Lifecycle)
 
-Costs:
-- per-user estimated monthly LLM cost
-- total burn estimate
-- top cost drivers by feature (Q&A, plan gen, assessments, exports)
+```
+START → DISCOVERY → PLAN_DRAFT → PLAN_REVIEW → APPROVED
+        ↓
+      ACTIVE ⇄ ASSESS ⇄ ADAPT
+        ↓
+     COMPLETE
+```
 
-Audit:
-- immutable admin audit log (who/what/when)
-
-### 4.2 Roles & Permissions (RBAC)
-Initial roles:
-- **Owner** (you): all access including secrets and billing settings
-- **Admin**: user management + programs, no secrets (optional)
-- **Coach**: can interact with users’ programs, no policies/secrets (optional)
-- **User**: self only
-
-RBAC must be enforced server-side for every admin endpoint.
-Secrets never exposed to non-owner roles.
-
----
-
-## 5) Architecture – Services
-### 5.1 Core Services
-- **Core API (FastAPI)**
-  - state machine + program lifecycle
-  - multi-agent orchestrator
-  - curriculum engine
-  - assessment engine
-  - verification engine
-  - exports (Notion/PDF/certificate)
-  - admin APIs (RBAC + audit)
-  - channel dispatch abstraction
-
-- **Worker/Jobs**
-  - reminders + follow-ups
-  - weekly summaries
-  - exports generation
-  - verification refresh jobs
-
-- **Channel Adapters**
-  - Telegram adapter
-  - WhatsApp adapter (Twilio/Meta)
-  - Email adapter
-
-### 5.2 Data Stores
-- Postgres: canonical state (users/goals/programs/tasks/policies/audit)
-- Redis/Queue: optional for jobs/rate limiting (recommended at scale)
-- Object storage: artifacts (PDFs, certificates)
+**Key Invariants:**
+- No program becomes ACTIVE without explicit approval
+- No external link sent unless verified (or from registry with valid TTL)
+- Paid resources/certifications require explicit opt-in
+- Budget and token caps enforced per user/program/timewindow
 
 ---
 
-## 6) Multi-Agent Orchestration (Logical Roles)
-Implemented via specialized prompts + router; can share one LLM.
+## 🏃 Quickstart
 
-Roles:
-1) **Learning Architect**
-   - goal -> structured syllabus JSON
-   - dependency ordering, pacing, workload estimate
-   - respects constraints + certification mode + policy gates
+### Prerequisites
 
-2) **Subject Mentor**
-   - teaches and answers questions
-   - creates examples and drills
-   - avoids scope drift; references the program context
+- Python 3.10+
+- PostgreSQL (or use Supabase/Neon)
+- OpenAI API key (or Anthropic)
 
-3) **Coach & Accountability**
-   - weekly check-ins
-   - nudges and rescheduling
-   - reflection prompts
-   - stall detection + recovery tactics
+### Local Setup (~5 minutes)
 
-4) **Verifier / Guardrails (mandatory)**
-   - validates links, claims, provider trust, certification constraints
-   - enforces budgets/token caps
-   - blocks hallucinations of resources and “facts”
+```bash
+git clone https://github.com/litansh/mentoros.git
+cd mentoros
 
----
+# Setup environment
+cp .env.example .env
+# Edit .env: Add OPENAI_API_KEY and DATABASE_URL
 
-## 7) Trust Layer – Resource Registry + Link Verification (Mandatory)
-### 7.1 Registry
-`resources/registry.yaml` contains canonical resources:
-- title, url, provider
-- tags/topics
-- cost_type: free|low|paid
-- cert_relevance: none|helpful|required
-- trust_score
-- language
-- notes
+# Install dependencies
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
-Optional:
-`resources/certification_catalog.yaml`
-- certification name, provider, official objectives URL, prerequisites, estimated cost, renewal rules
+# Initialize database
+python scripts/init_db.py
 
-### 7.2 Verification Rules
-- Every external URL must be verified before sending.
-- Verification method:
-  - HEAD with redirects
-  - GET fallback if HEAD blocked
-- Cache verification result with TTL (e.g., 14 days)
-- If invalid:
-  - replace with alternative from registry
-  - or ask user preference (free/paid/provider)
+# Load resource registry
+python scripts/load_registry.py resources/registry.yaml
 
-Hard rule:
-- system must never send an unverified external link.
+# Start API
+cd backend
+uvicorn main:app --reload --port 8000
+```
 
----
+**Access:**
+- API: http://localhost:8000
+- Swagger docs: http://localhost:8000/docs
+- Health check: http://localhost:8000/health
 
-## 8) Program Lifecycle (State Machine)
-States:
-1) START
-2) DISCOVERY (onboarding)
-3) PLAN_DRAFT
-4) PLAN_REVIEW
-5) APPROVED
-6) ACTIVE
-7) ASSESS
-8) ADAPT
-9) COMPLETE
+### Demo Flow (Test Core Features)
 
-Triggers:
-- PLAN_DRAFT: after discovery completion
-- APPROVED: user explicitly approves
-- ASSESS: end of module or on-demand
-- ADAPT: assessment results, stalling, user time change, or goal change
-- COMPLETE: program completion threshold met + final summary generated
+```bash
+# 1. Create a test user
+curl -X POST http://localhost:8000/api/onboarding/start \
+  -H "Content-Type: application/json" \
+  -d '{"goal": "Learn Python for data science", "hours_per_week": 5}'
 
-Stall detection (configurable):
-- no completion events for N days
-- missed 2 reminders
-- repeated quiz scores below threshold
+# 2. Generate learning plan
+curl -X POST http://localhost:8000/api/plan/generate
+
+# 3. View generated program
+curl http://localhost:8000/api/program/current
+
+# 4. Simulate plan approval
+curl -X POST http://localhost:8000/api/plan/approve
+
+# 5. Complete first task
+curl -X POST http://localhost:8000/api/task/complete \
+  -d '{"task_id": "<TASK_ID>"}'
+```
 
 ---
 
-## 9) Cost Governance (≤ $50/user/month Target)
-LLM cost is the main variable.
+## ⚙️ Configuration
 
-### 9.1 Model Routing Policy
-- cheap model: reminders, formatting, simple Q&A
-- strong model: plan generation, complex Q&A, assessment feedback synthesis
+### Environment Variables (.env)
 
-### 9.2 Token Budgets
-Enforced caps per user:
-- daily tokens
-- weekly tokens
-- monthly tokens (optional)
-Hard actions on exceed:
-- degrade to cheap model
-- restrict deep mentor features temporarily
-- prompt user to continue next day / upgrade tier
+```bash
+# ===== REQUIRED =====
+# OpenAI or Anthropic
+OPENAI_API_KEY=sk-xxx
+# OR
+ANTHROPIC_API_KEY=sk-ant-xxx
 
-### 9.3 Caching
-- cached explanations by topic
-- cached plan fragments
-- cached verification results
-- batch weekly summaries
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/mentoros
 
-Admin UI must expose estimated costs.
+# ===== OPTIONAL - Channels =====
+# Telegram (easiest for reminders/check-ins)
+TELEGRAM_BOT_TOKEN=123456789:ABCdef...
+TELEGRAM_WEBHOOK_SECRET=your_secret
 
----
+# WhatsApp via Twilio (optional)
+TWILIO_ACCOUNT_SID=ACxxx
+TWILIO_AUTH_TOKEN=xxx
+TWILIO_WHATSAPP_NUMBER=+14155238886
 
-## 10) Deployment Modes
+# Email (fallback)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your@email.com
+SMTP_PASSWORD=app_password
 
-### Mode A: Minimal / Low-cost
-Goal: ship fast, low ops.
-- Web UI: Vercel
-- API: Fly.io/Render
-- DB: Supabase/Neon Postgres
-- Jobs: GitHub Actions cron OR a worker service on Fly/Render
-- Storage: Supabase Storage or Cloudflare R2
-- Channels: Telegram + Email; WhatsApp optional
+# ===== OPTIONAL - Admin =====
+ADMIN_EMAIL=admin@example.com  # Owner role
+SECRET_KEY=your_secret_key_for_sessions
 
-### Mode B: Full AWS Scale
-Goal: handle growth and spikes reliably.
+# ===== OPTIONAL - Cost Governance =====
+DAILY_TOKEN_CAP=100000
+MONTHLY_BUDGET_USD=50
+MODEL_ROUTING=smart  # smart|cheap|premium
 
-Recommended (container-first):
-- API: ECS Fargate + ALB
-- Workers: ECS Fargate
-- Queue: SQS
-- Scheduler: EventBridge
-- DB: Aurora Serverless v2 (Postgres)
-- Cache/rate limits: ElastiCache Redis (optional)
-- Storage: S3 + CloudFront
-- Secrets: Secrets Manager
-- Observability: CloudWatch (+ OTel optional)
-- WAF optional
+# ===== OPTIONAL - Exports =====
+NOTION_API_KEY=secret_xxx  # For Notion sync
+```
 
-Migration design:
-- Postgres-compatible in minimal mode to ease DB migration
-- job abstraction (cron vs queue)
-- storage abstraction (R2/Supabase vs S3)
+### Resource Registry
 
----
+Edit `resources/registry.yaml` to add curated learning resources:
 
-## 11) Repository Structure
-.
-├─ apps/
-│  ├─ web/                        # Next.js (User + Admin portals)
-│  ├─ api/                        # FastAPI
-│  └─ worker/                     # jobs: reminders, exports, verification
-├─ core/
-│  ├─ orchestration/              # state machine + routing
-│  ├─ agents/                     # prompts + policies
-│  ├─ curriculum/                 # plan builder + cert planner
-│  ├─ coaching/                   # nudges, checkins, stall logic
-│  ├─ assessments/                # quizzes, scenario grading
-│  ├─ verification/               # registry + link verification
-│  ├─ channels/                   # telegram/whatsapp/email adapters
-│  ├─ auth/                       # RBAC, sessions, owner controls
-│  ├─ admin/                      # admin services + audit logs
-│  └─ exports/                    # Notion/PDF/certificate generators
-├─ resources/
-│  ├─ registry.yaml
-│  └─ certification_catalog.yaml
-├─ infra/
-│  ├─ minimal/
-│  └─ aws_full/
-└─ README.md
+```yaml
+resources:
+  - title: "Python Official Tutorial"
+    url: "https://docs.python.org/3/tutorial/"
+    provider: "python.org"
+    topics: ["python", "basics"]
+    cost_type: "free"
+    cert_relevance: "none"
+    trust_score: 0.95
+    verified_at: "2026-02-01"
+```
 
 ---
 
-## 12) API Surface (Minimum)
+## 📊 Observability
 
-User:
-- POST /api/onboarding/answer
-- POST /api/plan/generate
-- POST /api/plan/revise
-- POST /api/plan/approve
-- GET  /api/program/current
-- POST /api/task/complete
-- POST /api/ask
-- POST /api/assessment/submit
-- POST /api/export/notion
-- POST /api/export/pdf
-- POST /api/export/certificate
+### Logs
 
-Channels:
-- POST /webhooks/telegram
-- POST /webhooks/whatsapp/twilio (optional)
-- POST /webhooks/whatsapp/meta (optional)
-- POST /webhooks/email (optional)
+```bash
+# Structured JSON logs
+tail -f logs/mentoros.log | jq
 
-Admin (RBAC):
-- GET  /admin/users
-- GET  /admin/users/{id}
-- POST /admin/users/{id}/pause
-- POST /admin/users/{id}/resume
-- POST /admin/users/{id}/reset
-- POST /admin/users/{id}/disable
-- GET  /admin/policies
-- POST /admin/policies/update
-- GET  /admin/channels/status
-- POST /admin/channels/configure
-- GET  /admin/costs/summary
-- GET  /admin/audit
+# Key events:
+# - "program_created", "plan_approved", "task_completed"
+# - "assessment_scored", "stall_detected", "adaptation_triggered"
+# - "verification_failed", "policy_violation", "admin_action"
+```
 
----
+### Metrics (Future)
 
-## 13) Acceptance Criteria (Architect-level)
+- Program completion rate
+- Average time to mastery
+- Stall detection accuracy
+- Resource verification success rate
+- Cost per user per month
 
-Functional:
-- onboarding completes end-to-end
-- plan generation respects: time/week + deadline + budget + cert-mode
-- explicit approval gate works
-- tasks delivered + tracked
-- at least 1 assessment per module with scoring/feedback
-- adaptation occurs based on assessment or stalling triggers
-- export works (Notion or PDF; ideally both)
+### Admin Dashboard
 
-Trust:
-- no unverified external links are sent
-- paid resources/certs require explicit user opt-in
-- verifier blocks policy violations
+```bash
+# Access admin UI
+open http://localhost:3000/admin
 
-Governance:
-- admin can pause/disable users
-- RBAC enforced server-side
-- admin actions logged
-
-Scale readiness:
-- minimal deployment works
-- aws_full infra module documented and compatible
-- job abstraction allows cron→EventBridge/SQS migration without code rewrite
+# View:
+# - Active users and their program status
+# - Cost burn rate and top drivers
+# - Policy violations
+# - Audit log
+```
 
 ---
 
-## 14) Build Order (Safe & Practical)
+## 🗺️ Roadmap
 
-1) DB schema + core state machine
-2) Web onboarding + plan approval UX
-3) Plan generation (Learning Architect) + verifier + registry
-4) Task dashboard + completion tracking
-5) Telegram channel (send/receive)
-6) Jobs: reminders + weekly summaries
-7) Assessments + scoring
-8) Adaptation loop
-9) Admin portal (RBAC + policies + audit)
-10) Notion export
-11) PDF export + internal certificate
-12) WhatsApp adapter (optional)
-13) Full AWS Terraform module
+### ✅ Phase 1: MVP Foundation (Current)
+- [x] Core state machine (9 states)
+- [x] Multi-agent orchestration (4 agents)
+- [x] Resource registry + link verification
+- [x] Policy engine + cost governance
+- [x] FastAPI backend skeleton
+- [x] Comprehensive spec (docs/SPEC.md)
+
+### 🔄 Phase 2: Complete MVP (In Progress)
+- [ ] Web UI (Next.js) - onboarding, plan approval, task dashboard
+- [ ] Telegram bot integration
+- [ ] Assessment engine + scoring
+- [ ] Adaptation logic (stall detection + recovery)
+- [ ] Admin portal (RBAC + audit logs)
+- [ ] Notion export
+- [ ] Database schema + migrations
+
+### 📋 Phase 3: Production Hardening (Q2 2026)
+- [ ] Email channel adapter
+- [ ] PDF export + certificates
+- [ ] Job scheduler (reminders, summaries)
+- [ ] Full test coverage
+- [ ] Rate limiting + caching
+- [ ] Monitoring + alerting
+- [ ] Cost optimization (model routing)
+
+### 🚀 Phase 4: Scale & Premium Features (Q3 2026)
+- [ ] WhatsApp adapter (Twilio/Meta)
+- [ ] Multi-tenant architecture
+- [ ] Certification-first mode with exam prep
+- [ ] Advanced coaching (reflection prompts, scenario-based learning)
+- [ ] Full AWS deployment (ECS Fargate + Aurora)
+- [ ] Self-serve admin onboarding
+
 ---
+
+## 📄 License
+
+MIT License - See [LICENSE](LICENSE) file
+
+Copyright (c) 2026 Litan Shamir
+
+---
+
+## ⚠️ Disclaimer
+
+**Development Status:** MVP in progress. Core architecture complete, full features under active development.
+
+**Recommended Use:**
+- Test in development environment first
+- Resource registry requires manual curation for your domain
+- Cost governance policies should be configured before production use
+- Admin RBAC must be properly configured for multi-user deployments
+
+**Security:**
+- Never commit `.env` files with real credentials
+- Use secrets management (AWS Secrets Manager, HashiCorp Vault) in production
+- Review all admin actions in audit logs
+- Rotate API keys quarterly
+
+**Cost Awareness:**
+- LLM costs are primary variable (~$20-50/user/month depending on usage)
+- Set DAILY_TOKEN_CAP and MONTHLY_BUDGET_USD in .env
+- Monitor cost dashboard in admin UI
+- Start with cheap models, upgrade to smart routing after validation
+
+---
+
+## 📚 Documentation
+
+- **[SPEC.md](docs/SPEC.md)** - Complete architecture specification (410 lines)
+- **[STATE_MACHINE.md](docs/STATE_MACHINE.md)** - Program lifecycle state transitions
+- **[AGENT_PROMPTS.md](docs/AGENT_PROMPTS.md)** - Multi-agent prompt templates
+- **[GUARDRAILS.md](docs/GUARDRAILS.md)** - Verification rules and policy enforcement
+- **[POLICY_SCHEMA.md](docs/POLICY_SCHEMA.md)** - Cost governance and RBAC configuration
+
+---
+
+**Status:** 🔄 MVP in active development | Core architecture complete (~600 lines Python)
+
+**Target:** Goal-to-mastery learning platform with <$50/user/month operating cost
